@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+*.pcap
+*.22000
+captures/
+.opsec_state.json
+.playwright-mcp/
+*.log

@@ -1,0 +1,34 @@
+[project]
+name = "netpwn"
+version = "1.0.0"
+description = "Suite grafica de auditoria de redes (pentesting) con interfaz web: descubrimiento, escaneo, MITM y mas, al estilo bettercap."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "letox4" }]
+keywords = ["security", "pentesting", "network", "audit", "kali", "bettercap"]
+classifiers = [
+    "Environment :: Web Environment",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+]
+dependencies = [
+    "fastapi>=0.115,<0.116",
+    "uvicorn[standard]>=0.32,<0.33",
+    "scapy>=2.6,<2.7",
+    "netifaces2>=0.0.22",
+    "pydantic>=2.9,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[project.urls]
+Homepage = "https://github.com/letox4/netpwn"
+
+# NetPwn se ejecuta desde el repositorio (python3 netpwn.py): el paquete no
+# se instala en site-packages, pyproject aporta metadatos y dependencias.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

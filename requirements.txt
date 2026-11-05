@@ -1,0 +1,5 @@
+fastapi>=0.115,<0.116
+uvicorn[standard]>=0.32,<0.33
+scapy>=2.6,<2.7
+netifaces2>=0.0.22
+pydantic>=2.9,<3

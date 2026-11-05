@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest httpx
+      - name: Tests unitarios
+        run: pytest -v
+
+  demo-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Arrancar en modo demo y comprobar la API
+        run: |
+          python netpwn.py --demo --port 8123 &
+          for i in $(seq 1 20); do curl -sf http://127.0.0.1:8123/api/status && break || sleep 1; done
+          curl -sf http://127.0.0.1:8123/ > /dev/null
+          curl -sf http://127.0.0.1:8123/api/interfaces | grep -q "10.10.20.50"
+          curl -sf -X POST http://127.0.0.1:8123/api/discovery -H 'Content-Type: application/json' -d '{"interface":"eth0","cidr":"10.10.20.0/24"}' | grep -q "10.10.20.10"
+          # Un endpoint ofensivo debe estar bloqueado en demo
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8123/api/arp/start -H 'Content-Type: application/json' -d '{"interface":"eth0","target_ip":"1.2.3.4","gateway_ip":"1.2.3.1"}')" = "400"

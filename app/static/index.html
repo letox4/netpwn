@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NetPwn</title>
+  <link rel="stylesheet" href="/static/style.css?v=9" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-wrap">
+      <div class="brand">Net<span>Pwn</span></div>
+      <label class="lang-pick">
+        <span data-i18n="lang.label">Language</span>
+        <select id="lang" data-i18n-label="lang.label" aria-label="Language">
+          <option value="en">English</option>
+          <option value="es">Español</option>
+        </select>
+      </label>
+    </div>
+    <div class="iface-picker">
+      <label data-i18n="iface.label">Interface</label>
+      <select id="iface"></select>
+      <span id="gateway" class="gw"></span>
+      <span id="opsec-id" class="opsec-pill" data-i18n-title="opsec.pill" title="OPSEC identity">—</span>
+      <span id="active-modules" class="opsec-pill active-pill" hidden></span>
+      <span id="ws-state" class="ws-dot" title="WebSocket"></span>
+      <button id="btn-panic" class="panic" data-i18n="panic.btn" data-i18n-title="panic.title" title="Kill switch: stop everything, flush rules and restore identity">PANIC</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <button class="nav" data-panel="hosts"><span class="ico">◉</span><span data-i18n="nav.hosts">Hosts</span></button>
+      <button class="nav" data-panel="topo"><span class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="4.5" r="2.2"/><circle cx="5" cy="19" r="2.2"/><circle cx="19" cy="19" r="2.2"/><path d="M10.8 6.6L6.2 17M13.2 6.6l4.6 10.4M7.2 19h9.6"/></svg></span><span data-i18n="nav.topo">Topology</span></button>
+      <button class="nav" data-panel="ports"><span class="ico">▤</span><span data-i18n="nav.ports">Ports</span></button>
+      <button class="nav" data-panel="mitm"><span class="ico">⇄</span><span data-i18n="nav.mitm">MITM (ARP)</span></button>
+      <button class="nav" data-panel="sniff"><span class="ico">≈</span><span data-i18n="nav.sniff">Sniffer</span></button>
+      <button class="nav" data-panel="dns"><span class="ico">✦</span><span data-i18n="nav.dns">DNS Spoof</span></button>
+      <button class="nav" data-panel="creds"><span class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M11 12L21 2"/><path d="M16 7l3 3"/><path d="M14 9l2 2"/></svg></span><span data-i18n="nav.creds">Credentials</span></button>
+      <button class="nav" data-panel="http"><span class="ico">⬇</span><span data-i18n="nav.http">HTTP Inject</span></button>
+      <button class="nav" data-panel="poison"><span class="ico">☣</span><span data-i18n="nav.poison">Poisoners</span></button>
+      <button class="nav" data-panel="mitm6"><span class="ico">6</span><span data-i18n="nav.mitm6">mitm6</span></button>
+      <button class="nav" data-panel="wifi"><span class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M2.5 9a15 15 0 0 1 19 0"/><path d="M5.5 12.5a10.5 10.5 0 0 1 13 0"/><path d="M8.5 16a6 6 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1.4" fill="currentColor" stroke="none"/></svg></span><span data-i18n="nav.wifi">Wi-Fi</span></button>
+      <button class="nav" data-panel="camera"><span class="ico">◉</span><span>Cameras</span></button>
+      <button class="nav" data-panel="opsec"><span class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3c3 0 5 2 5 5 0 1.5-.5 2.5-1 3.5.8 1 1.4 2.4 1.4 4 0 .8-.1 1.5-.4 2.2-.9-.6-2-.9-3-.6-1 .3-1.6 1-2 1.9-.4-.9-1-1.6-2-1.9-1-.3-2.1 0-3 .6-.3-.7-.4-1.4-.4-2.2 0-1.6.6-3 1.4-4C7.5 10.5 7 9.5 7 8c0-3 2-5 5-5z"/><path d="M12 3v14"/><circle cx="12" cy="8" r="0.5" fill="currentColor"/></svg></span><span data-i18n="nav.opsec">OPSEC</span></button>
+    </nav>
+
+    <main class="content">
+      <!-- TOPOLOGIA -->
+      <section class="panel" id="panel-topo">
+        <div class="panel-head">
+          <h2 data-i18n="topo.title">Network topology map</h2>
+          <div class="inline">
+            <button id="btn-topo-passive" class="primary" data-i18n="topo.passive">Map network (quiet)</button>
+            <button id="btn-topo-aggressive" class="danger" data-i18n="topo.aggressive">Aggressive fingerprint</button>
+          </div>
+        </div>
+        <p class="hint" data-i18n-html="topo.hint">Built for plant networks: PLC, HMI, RTU, SCADA, drives, relays, robots and instruments, plus ordinary network gear. <strong>Quiet</strong> mode uses ARP, TTL, vendor and reverse DNS. <strong>Aggressive</strong> mode also checks the ports that give the device type away.</p>
+        <div class="topo-wrap">
+          <canvas id="topo-canvas"></canvas>
+          <div class="topo-legend" id="topo-legend"></div>
+        </div>
+        <div id="topo-details" class="id-card" style="display:none; margin-top:12px"></div>
+      </section>
+
+      <!-- HOSTS -->
+      <section class="panel active" id="panel-hosts">
+        <div class="panel-head">
+          <h2 data-i18n="hosts.title">Network discovery</h2>
+          <button id="btn-scan" class="primary" data-i18n="hosts.scan">Scan network</button>
+        </div>
+        <div id="envcheck" class="envcheck"></div>
+        <p class="hint" data-i18n="hosts.hint">ARP sweep of the selected interface range. Click a host to pin it as the target.</p>
+        <table class="data">
+          <thead><tr><th>IP</th><th>MAC</th><th data-i18n="hosts.vendor">Vendor</th><th data-i18n="hosts.os">OS (approx.)</th><th data-i18n="hosts.actions">Actions</th></tr></thead>
+          <tbody id="hosts-body"></tbody>
+        </table>
+        <div id="exploits-global" class="exploits-section" style="display:none; margin-top:18px">
+          <div class="panel-head" style="margin-top:0">
+            <h2>Exploits encontrados</h2>
+            <button id="btn-exploits-clear" class="mini" data-i18n="exploits.clear">Clear</button>
+          </div>
+          <p class="hint">Resultados de búsqueda por servicio + versión usando searchsploit.</p>
+          <div id="exploits-results"></div>
+        </div>
+      </section>
+
+      <!-- PUERTOS -->
+      <section class="panel" id="panel-ports">
+        <div class="panel-head">
+          <h2 data-i18n="ports.title">Port scan</h2>
+          <div class="inline">
+            <input id="port-ip" data-i18n-placeholder="ports.ipPh" placeholder="Target IP" />
+            <input id="port-range" data-i18n-placeholder="ports.rangePh" placeholder="ports: 22,80,1-1000 (empty=common)" style="width:260px" />
+            <select id="port-mode">
+              <option value="connect">TCP connect</option>
+              <option value="syn">SYN stealth</option>
+            </select>
+            <label class="row-check" style="white-space:nowrap"><input type="checkbox" id="port-lownoise" /> <span data-i18n="ports.low">Low noise</span></label>
+            <button id="btn-portscan" class="primary" data-i18n="ports.go">Scan</button>
+          </div>
+        </div>
+        <p class="hint" data-i18n-html="ports.hint"><strong>SYN stealth</strong> completes only half the handshake (needs root, fewer logs on the target). <strong>Low noise</strong> slows down and adds random jitter against an IDS.</p>
+        <div class="btn-row" style="margin:10px 0 14px">
+          <button id="btn-exploits-ports" class="mini primary" data-i18n="exploits.portsBtn">Search exploits for open ports</button>
+          <span id="exploits-ports-status" class="muted" style="font-size:12px"></span>
+        </div>
+        <table class="data">
+          <thead><tr><th data-i18n="ports.port">Port</th><th data-i18n="ports.service">Service</th><th data-i18n="ports.banner">Banner</th></tr></thead>
+          <tbody id="ports-body"></tbody>
+        </table>
+        <div id="exploits-ports-panel" class="exploits-section" style="display:none; margin-top:16px">
+          <div class="panel-head" style="margin-top:0">
+            <h2>Exploits (puertos)</h2>
+          </div>
+          <div id="exploits-ports-results"></div>
+        </div>
+      </section>
+
+      <!-- MITM -->
+      <section class="panel" id="panel-mitm">
+        <div class="panel-head"><h2 data-i18n="mitm.title">Man-in-the-Middle (ARP spoofing)</h2></div>
+        <div class="form">
+          <label><span data-i18n="mitm.target">Target IP</span> <input id="arp-target" placeholder="192.168.1.50" /></label>
+          <label><span data-i18n="mitm.gateway">Gateway IP</span> <input id="arp-gateway" placeholder="192.168.1.1" /></label>
+          <div class="btn-row">
+            <button id="btn-arp-start" class="primary" data-i18n="mitm.start">Start MITM</button>
+            <button id="btn-arp-stop" class="danger" data-i18n="mitm.stop">Stop</button>
+          </div>
+        </div>
+        <p class="hint" data-i18n="mitm.hint">Turns on IP forwarding and poisons the ARP tables of the target and the gateway. Combine it with Sniffer, DNS or Credentials.</p>
+      </section>
+
+      <!-- SNIFFER -->
+      <section class="panel" id="panel-sniff">
+        <div class="panel-head"><h2 data-i18n="sniff.title">Packet sniffer</h2></div>
+        <div class="form">
+          <label><span data-i18n="sniff.bpf">BPF filter (optional)</span> <input id="sniff-bpf" data-i18n-placeholder="sniff.bpfPh" placeholder="e.g. tcp port 80" /></label>
+          <div class="btn-row">
+            <button id="btn-sniff-start" class="primary" data-i18n="sniff.start">Start</button>
+            <button id="btn-sniff-stop" class="danger" data-i18n="sniff.stop">Stop</button>
+          </div>
+        </div>
+        <table class="data compact">
+          <thead><tr><th>Proto</th><th data-i18n="sniff.src">Source</th><th data-i18n="sniff.dst">Destination</th><th data-i18n="sniff.ports">Ports</th><th>Info</th></tr></thead>
+          <tbody id="sniff-body"></tbody>
+        </table>
+      </section>
+
+      <!-- DNS -->
+      <section class="panel" id="panel-dns">
+        <div class="panel-head"><h2 data-i18n="dns.title">DNS spoofing</h2></div>
+        <div class="form">
+          <label><span data-i18n-html="dns.map">Redirects (one per line: <code>domain=IP</code>)</span>
+            <textarea id="dns-map" rows="4" placeholder="ejemplo.com=10.0.0.5&#10;banco.com=10.0.0.5"></textarea>
+          </label>
+          <label><span data-i18n="dns.all">Or redirect EVERYTHING to this IP</span> <input id="dns-all" placeholder="10.0.0.5" /></label>
+          <div class="btn-row">
+            <button id="btn-dns-start" class="primary" data-i18n="dns.start">Start</button>
+            <button id="btn-dns-stop" class="danger" data-i18n="dns.stop">Stop</button>
+          </div>
+        </div>
+        <p class="hint" data-i18n="dns.hint">DNS traffic has to pass through here (start MITM first).</p>
+      </section>
+
+      <!-- CREDS -->
+      <section class="panel" id="panel-creds">
+        <div class="panel-head">
+          <h2 data-i18n="creds.title">Credential capture</h2>
+          <div class="btn-row">
+            <button id="btn-creds-start" class="primary" data-i18n="creds.start">Start</button>
+            <button id="btn-creds-stop" class="danger" data-i18n="creds.stop">Stop</button>
+            <button id="btn-creds-export" class="mini" data-i18n="creds.export">Export JSON</button>
+            <button id="btn-creds-clear" class="mini danger" data-i18n="creds.clear">Clear buffer</button>
+          </div>
+        </div>
+        <p class="hint" data-i18n-html="creds.hint">HTTP Basic, forms (urlencoded and JSON), session cookies, Bearer tokens, API keys, FTP and NTLMSSP. Everything stays <strong>in memory only</strong>: nothing is written to disk until you export.</p>
+        <table class="data">
+          <thead><tr><th data-i18n="creds.proto">Protocol</th><th data-i18n="creds.data">Data</th><th data-i18n="creds.flow">Source → Destination</th></tr></thead>
+          <tbody id="creds-body"></tbody>
+        </table>
+      </section>
+
+      <!-- HTTP INJECT -->
+      <section class="panel" id="panel-http">
+        <div class="panel-head"><h2 data-i18n="http.title">HTTP MITM: injection + sslstrip</h2></div>
+        <div class="form" style="max-width:640px">
+          <label><span data-i18n-html="http.payload">Payload to inject (HTML/JS, inserted before &lt;/body&gt;)</span>
+            <textarea id="http-inject" rows="4" placeholder="&lt;script&gt;alert('pwned')&lt;/script&gt;"></textarea>
+          </label>
+          <label class="row-check"><input type="checkbox" id="http-sslstrip" checked /> <span data-i18n="http.sslstrip">Enable sslstrip (https→http, strips HSTS/CSP)</span></label>
+          <label><span data-i18n="http.port">Proxy port</span> <input id="http-port" value="8080" style="width:120px" /></label>
+          <div class="btn-row">
+            <button id="btn-http-start" class="primary" data-i18n="http.start">Start</button>
+            <button id="btn-http-stop" class="danger" data-i18n="http.stop">Stop</button>
+          </div>
+        </div>
+        <p class="hint" data-i18n-html="http.hint">Needs ARP MITM running. Redirects the victim's TCP/80 to the proxy with <code>iptables</code> and injects into cleartext HTML. It does not decrypt HTTPS.</p>
+        <table class="data compact">
+          <thead><tr><th>Host</th><th data-i18n="http.path">Path</th><th data-i18n="http.dst">Destination</th></tr></thead>
+          <tbody id="http-body"></tbody>
+        </table>
+      </section>
+
+      <!-- POISONERS -->
+      <section class="panel" id="panel-poison">
+        <div class="panel-head"><h2 data-i18n="poison.title">Poisoners (LLMNR / NBT-NS / mDNS + WPAD)</h2></div>
+        <p class="hint" data-i18n-html="poison.hint">Answers name lookups that DNS did not resolve, using your IP. On Windows networks this pulls in SMB/HTTP connections without touching ARP. Turn on <strong>WPAD</strong> to serve <code>wpad.dat</code> so victims use your proxy.</p>
+        <div class="form" style="max-width:640px">
+          <label class="row-check"><input type="checkbox" id="poison-llmnr" checked /> <span data-i18n="poison.llmnr">LLMNR (port 5355)</span></label>
+          <label class="row-check"><input type="checkbox" id="poison-nbtns" checked /> <span data-i18n="poison.nbtns">NBT-NS (port 137, the classic Windows one)</span></label>
+          <label class="row-check"><input type="checkbox" id="poison-mdns" /> <span data-i18n="poison.mdns">mDNS (port 5353, Apple/printers)</span></label>
+          <label class="row-check"><input type="checkbox" id="poison-wpad" checked /> <span data-i18n="poison.wpad">WPAD: PAC + proxy that logs traffic</span></label>
+          <label><span data-i18n="poison.ip">Reply with IP (empty = yours)</span> <input id="poison-ip" placeholder="192.168.1.50" /></label>
+          <label><span data-i18n="poison.port">WPAD proxy port</span> <input id="poison-proxyport" value="3128" style="width:100px" /></label>
+          <div class="btn-row">
+            <button id="btn-poison-start" class="primary" data-i18n="poison.start">Start</button>
+            <button id="btn-poison-stop" class="danger" data-i18n="poison.stop">Stop</button>
+          </div>
+        </div>
+        <table class="data compact">
+          <thead><tr><th>Proto</th><th data-i18n="poison.name">Queried name</th><th data-i18n="poison.src">Source</th></tr></thead>
+          <tbody id="poison-body"></tbody>
+        </table>
+      </section>
+
+      <!-- MITM6 -->
+      <section class="panel" id="panel-mitm6">
+        <div class="panel-head"><h2 data-i18n="mitm6.title">mitm6 (IPv6: RA + DNS)</h2></div>
+        <p class="hint" data-i18n="mitm6.hint">Advertises this machine as an IPv6 router and DNS server with Router Advertisements. Plenty of networks leave IPv6 on with nobody watching, so victims start resolving DNS through you. Aggressive: it cuts off legitimate DNS resolution while it is active.</p>
+        <div class="form" style="max-width:640px">
+          <label class="row-check"><input type="checkbox" id="mitm6-redirect" /> <span data-i18n="mitm6.redirect">Redirect HTTP (ip6tables TCP/80 → HTTP Inject proxy)</span></label>
+          <label><span data-i18n-html="mitm6.map">Optional mappings (one per line: <code>domain=IP</code>; empty = everything to you)</span>
+            <textarea id="mitm6-map" rows="3" placeholder="intranet.corp=fe80::1"></textarea>
+          </label>
+          <div class="btn-row">
+            <button id="btn-mitm6-start" class="primary" data-i18n="mitm6.start">Start</button>
+            <button id="btn-mitm6-stop" class="danger" data-i18n="mitm6.stop">Stop</button>
+          </div>
+        </div>
+        <table class="data compact">
+          <thead><tr><th data-i18n="mitm6.kind">Type</th><th data-i18n="mitm6.domain">Queried domain</th><th data-i18n="mitm6.src">Source (IPv6)</th></tr></thead>
+          <tbody id="mitm6-body"></tbody>
+        </table>
+      </section>
+
+      <!-- WIFI -->
+      <section class="panel" id="panel-wifi">
+        <div class="panel-head"><h2 data-i18n="wifi.title">Wi-Fi (802.11)</h2></div>
+        <p class="hint" data-i18n-html="wifi.hint">Select the Wi-Fi interface above. <strong>Prepare automatically</strong> stops <code>NetworkManager</code> and <code>wpa_supplicant</code> and switches to monitor mode when you scan, deauth or capture. You can also do it by hand.</p>
+        <div class="form" style="max-width:640px">
+          <div class="id-card" style="margin-bottom:8px">
+            <div><span class="muted" data-i18n="wifi.iface">Interface</span><strong id="wifi-iface-name">—</strong></div>
+            <div><span class="muted" data-i18n="wifi.mode">Mode</span><strong id="wifi-mode">—</strong></div>
+          </div>
+          <label class="row-check"><input type="checkbox" id="wifi-prepare" checked /> <span data-i18n="wifi.prepare">Prepare automatically (kill NM/wpa + monitor mode)</span></label>
+          <div class="btn-row">
+            <button id="btn-mon-start" class="primary" data-i18n="wifi.mon">Monitor mode</button>
+            <button id="btn-mon-stop" class="danger" data-i18n="wifi.managed">Back to managed</button>
+            <button id="btn-wifi-kill" class="mini" type="button" data-i18n="wifi.kill">Only stop services</button>
+            <button id="btn-wifi-restore" class="mini" type="button" data-i18n="wifi.restore">Restore NetworkManager</button>
+          </div>
+          <div class="btn-row">
+            <button id="btn-wifi-scan-start" class="primary" data-i18n="wifi.scan">Scan networks</button>
+            <button id="btn-wifi-scan-stop" class="danger" data-i18n="wifi.scanStop">Stop scan</button>
+          </div>
+        </div>
+        <table class="data compact">
+          <thead><tr><th>SSID</th><th>BSSID</th><th data-i18n="wifi.channel">Channel</th><th data-i18n="wifi.signal">Signal</th><th data-i18n="wifi.enc">Encryption</th><th></th></tr></thead>
+          <tbody id="wifi-body"></tbody>
+        </table>
+        <div class="panel-head" style="margin-top:14px"><h3 data-i18n="wifi.clientsTitle">Detected clients</h3></div>
+        <table class="data compact">
+          <thead><tr><th data-i18n="wifi.clientAp">AP / BSSID</th><th data-i18n="wifi.client">Detected client</th><th data-i18n="wifi.signal">Signal</th><th data-i18n="wifi.channel">Channel</th><th></th></tr></thead>
+          <tbody id="wifi-clients-body"></tbody>
+        </table>
+        <div class="panel-head" style="margin-top:20px"><h2 data-i18n="wifi.deauthTitle">Deauth</h2></div>
+        <p class="hint" data-i18n="wifi.deauthSafety">Normal mode targets a client detected on the AP. Optional broadcast is off by default and may disconnect every client on that AP.</p>
+        <div class="form" style="max-width:640px">
+          <label><span data-i18n="wifi.bssid">AP BSSID</span> <input id="deauth-bssid" placeholder="AA:BB:CC:DD:EE:FF" /></label>
+          <label><span data-i18n="wifi.clientSelect">Detected target client</span>
+            <select id="deauth-client"><option value="" data-i18n="wifi.selectClient">Run Wi-Fi scan and select an AP first</option></select>
+          </label>
+          <label><span data-i18n="wifi.channel">Channel</span> <input id="deauth-channel" placeholder="6" style="width:100px" /></label>
+          <label class="row-check"><input type="checkbox" id="deauth-lownoise" checked /> <span data-i18n="wifi.low">Extra cautious (2 frames per direction)</span></label>
+          <label class="row-check broadcast-option"><input type="checkbox" id="deauth-broadcast" /> <span data-i18n="wifi.broadcastOption">Broadcast to all AP clients (situational; impacts everyone)</span></label>
+          <p class="hint" data-i18n="wifi.broadcastWarning">Broadcast sends one deauth frame to the AP's broadcast address; it can interrupt all connected clients. Confirm each time before sending.</p>
+          <div class="btn-row">
+            <button id="btn-deauth-start" class="danger" data-i18n="wifi.deauthStart">Start deauth</button>
+            <button id="btn-deauth-stop" class="danger" data-i18n="wifi.stop">Stop</button>
+          </div>
+        </div>
+
+        <div class="panel-head" style="margin-top:20px"><h2 data-i18n="wifi.pmkidTitle">PMKID capture (no client, no deauth)</h2></div>
+        <p class="hint" data-i18n-html="wifi.pmkidHint"><code>hcxdumptool</code> style: sends reassociations from a made-up MAC and the AP answers with an EAPOL M1 that already carries the PMKID. Quieter than deauthing a real client. Works on WPA/WPA2 with roaming enabled.</p>
+        <div class="form" style="max-width:640px">
+          <label><span data-i18n="wifi.bssid">AP BSSID</span> <input id="pmkid-bssid" placeholder="AA:BB:CC:DD:EE:FF" /></label>
+          <label><span data-i18n="wifi.channel">Channel</span> <input id="pmkid-channel" placeholder="6" style="width:100px" /></label>
+          <label class="row-check"><input type="checkbox" id="pmkid-auto" /> <span data-i18n="wifi.pmkidAuto">Convert to hashcat (.22000) automatically</span></label>
+          <div class="btn-row">
+            <button id="btn-pmkid-start" class="primary" data-i18n="wifi.pmkidStart">Start PMKID capture</button>
+            <button id="btn-pmkid-stop" class="danger" data-i18n="wifi.stop">Stop</button>
+          </div>
+        </div>
+
+        <div class="panel-head" style="margin-top:20px"><h2 data-i18n="wifi.hsTitle">Handshake capture (EAPOL)</h2></div>
+        <p class="hint" data-i18n-html="wifi.hsHint">Listens for the WPA/WPA2 4-way handshake and saves it to a <code>.pcap</code>. Lock the target AP channel and run a <strong>deauth</strong> in parallel to force the reconnect.</p>
+        <div class="form" style="max-width:640px">
+          <label><span data-i18n="wifi.hsChannel">Channel (optional, pins the card to that channel)</span> <input id="hs-channel" placeholder="6" style="width:100px" /></label>
+          <label class="row-check"><input type="checkbox" id="hs-auto" /> <span data-i18n="wifi.hsAuto">Convert to hashcat (.22000) automatically when captured</span></label>
+          <div class="btn-row">
+            <button id="btn-hs-start" class="primary" data-i18n="wifi.hsStart">Start capture</button>
+            <button id="btn-hs-stop" class="danger" data-i18n="wifi.stop">Stop</button>
+          </div>
+        </div>
+        <table class="data compact">
+          <thead><tr><th data-i18n="wifi.hsState">Status</th><th>SSID</th><th>BSSID</th><th data-i18n="wifi.hsClient">Client</th><th data-i18n="wifi.hsFile">File</th></tr></thead>
+          <tbody id="hs-body"></tbody>
+        </table>
+
+        <div class="panel-head" style="margin-top:20px">
+          <h2 data-i18n="wifi.saved">Saved captures</h2>
+          <button id="btn-captures-refresh" class="mini" data-i18n="wifi.refresh">Refresh</button>
+        </div>
+        <p class="hint" data-i18n-html="wifi.savedHint">Convert any <code>.pcap</code> to hashcat mode <strong>22000</strong> (<code>hashcat -m 22000</code>) in one click, or download the file.</p>
+        <table class="data compact">
+          <thead><tr><th data-i18n="wifi.file">File</th><th data-i18n="wifi.kind">Type</th><th data-i18n="wifi.size">Size</th><th data-i18n="wifi.actions">Actions</th></tr></thead>
+          <tbody id="captures-body"></tbody>
+        </table>
+      </section>
+
+      <!-- CAMARAS -->
+      <section class="panel" id="panel-camera">
+        <div class="panel-head">
+          <h2 data-i18n="cam.title">Camera audit</h2>
+          <div class="inline">
+            <button id="btn-cam-discover" class="primary" data-i18n="cam.discover">Discover cameras</button>
+            <button id="btn-cam-clear" class="mini" data-i18n="cam.clear">Clear</button>
+          </div>
+        </div>
+        <p class="hint" data-i18n-html="cam.hint">Integrated camera auditor (RTSP, ONVIF, default creds, P2P/Tuya/MQTT, modern smart cams, cloud recon, firmware CVEs). Discovery scans the camera-specific ports across the range.</p>
+        <div class="form" style="max-width:640px">
+          <label><span data-i18n="cam.target">Target (IP for audit, CIDR for discovery)</span>
+            <input id="cam-target" placeholder="192.168.1.50 o 192.168.1.0/24" />
+          </label>
+          <div class="checks">
+            <label class="row-check"><input type="checkbox" id="cam-creds" checked /> <span data-i18n="cam.creds">Default creds</span></label>
+            <label class="row-check"><input type="checkbox" id="cam-rtsp" checked /> <span data-i18n="cam.rtsp">RTSP audit</span></label>
+            <label class="row-check"><input type="checkbox" id="cam-onvif" checked /> <span data-i18n="cam.onvif">ONVIF</span></label>
+            <label class="row-check"><input type="checkbox" id="cam-http" /> <span data-i18n="cam.http">HTTP fuzzing</span></label>
+            <label class="row-check"><input type="checkbox" id="cam-wifi" /> <span data-i18n="cam.wifi">P2P / Tuya / MQTT</span></label>
+            <label class="row-check"><input type="checkbox" id="cam-modern" /> <span data-i18n="cam.modern">Modern (Tapo/Wyze/Eufy/Ring)</span></label>
+            <label class="row-check"><input type="checkbox" id="cam-cloud" /> <span data-i18n="cam.cloud">Cloud recon</span></label>
+            <label class="row-check"><input type="checkbox" id="cam-vuln" /> <span data-i18n="cam.vuln">Firmware + CVEs</span></label>
+          </div>
+          <div class="btn-row">
+            <button id="btn-cam-audit" class="primary" data-i18n="cam.audit">Run audit</button>
+          </div>
+        </div>
+        <table class="data" style="margin-top:14px">
+          <thead><tr><th data-i18n="cam.severity">Severity</th><th data-i18n="cam.module">Module</th><th data-i18n="cam.finding">Finding</th><th data-i18n="cam.detail">Detail</th></tr></thead>
+          <tbody id="cam-body"></tbody>
+        </table>
+        <table class="data" style="margin-top:14px">
+          <thead><tr><th>IP</th><th>Port</th><th>Device</th><th></th></tr></thead>
+          <tbody id="cam-discovered"></tbody>
+        </table>
+      </section>
+
+      <!-- OPSEC -->
+      <section class="panel" id="panel-opsec">
+        <div class="panel-head">
+          <h2 data-i18n="opsec.title">OPSEC identity</h2>
+          <button id="btn-opsec-restore" class="danger" data-i18n="opsec.restore">Restore original</button>
+        </div>
+        <p class="hint" data-i18n-html="opsec.hint">Changes the Kali hostname and the interface MAC so you do not show up as <code>kali</code> in DHCP, banners or ARP lists. The real values are saved and can be reverted. Changing the MAC drops the link for a second.</p>
+
+        <div class="id-card" id="opsec-card">
+          <div><span class="muted" data-i18n="opsec.host">Hostname</span><strong id="opsec-host">—</strong></div>
+          <div><span class="muted" data-i18n="opsec.mac">Current MAC</span><strong id="opsec-mac">—</strong></div>
+          <div><span class="muted" data-i18n="opsec.perm">Factory MAC</span><strong id="opsec-perm">—</strong></div>
+          <div><span class="muted" data-i18n="opsec.state">Status</span><strong id="opsec-state">—</strong></div>
+        </div>
+
+        <div class="panel-head" style="margin-top:18px"><h2 data-i18n="opsec.profiles">Quick profiles</h2></div>
+        <p class="hint" data-i18n="opsec.profilesHint">One click builds a hostname + MAC with a real vendor OUI (it does not look like a made-up MAC).</p>
+        <div class="profiles" id="opsec-profiles"></div>
+
+        <div class="panel-head" style="margin-top:18px"><h2 data-i18n="opsec.custom">Custom</h2></div>
+        <div class="form" style="max-width:640px">
+          <label><span data-i18n="opsec.host">Hostname</span> <input id="opsec-hostname" placeholder="DESKTOP-7K2M9XQ" /></label>
+          <label><span data-i18n="opsec.pretty">Pretty name (optional)</span> <input id="opsec-pretty" placeholder="DESKTOP" /></label>
+          <label><span data-i18n="opsec.macIn">MAC (empty = generate)</span>
+            <div class="inline">
+              <input id="opsec-mac-in" placeholder="aa:bb:cc:dd:ee:ff" />
+              <select id="opsec-vendor"></select>
+              <button id="btn-opsec-genmac" class="mini" type="button" data-i18n="opsec.genMac">Generate MAC</button>
+              <button id="btn-opsec-genhost" class="mini" type="button" data-i18n="opsec.genHost">Generate hostname</button>
+            </div>
+          </label>
+          <label class="row-check"><input type="checkbox" id="opsec-dhcp" checked /> <span data-i18n="opsec.dhcp">Renew DHCP after changing the MAC</span></label>
+          <div class="btn-row">
+            <button id="btn-opsec-apply" class="primary" data-i18n="opsec.apply">Apply identity</button>
+            <button id="btn-opsec-host-only" class="mini" data-i18n="opsec.hostOnly">Hostname only</button>
+            <button id="btn-opsec-mac-only" class="mini" data-i18n="opsec.macOnly">MAC only</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="console">
+    <div class="console-head"><span data-i18n="console.title">Event console</span> <button id="btn-clear" data-i18n="console.clear">Clear</button></div>
+    <div id="log" class="log"></div>
+  </footer>
+
+  <script src="/static/i18n.js?v=5"></script>
+  <script src="/static/app.js?v=13"></script>
+</body>
+</html>
